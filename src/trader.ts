@@ -11,7 +11,7 @@ export interface BlockEvent {
   bestBid: number;
   bestAsk: number;
   spreadBps: number;
-  decision: { action: Action; probabilities: Record<Action, number>; confidence: number; upIn10: number; latencyMs: number; late: boolean } | null;
+  decision: { action: Action; probabilities: Record<Action, number>; confidence: number; skipped: boolean; upIn10: number; latencyMs: number; late: boolean } | null;
   /** The order this block put on the book. */
   quote: Quote | null;
   /** Maker fills that landed in this block (aggregated), attached when the trade logs for it arrive. */
@@ -29,6 +29,8 @@ export interface Totals {
   blocks: number;
   decisions: number;
   quotes: number;
+  /** Blocks where the decision's confidence was under config.skipBelowConfidence: no order was placed. */
+  skipped: number;
   fills: number;
   reverted: number;
   lateBlocks: number;
@@ -45,7 +47,8 @@ interface Resting { side: Side; price: number; size: number; block: number }
 
 /**
  * Every block: read the book, ask the model buy or sell, and post one post-only limit order on
- * that side (`quoteInsideTicks` inside the touch), cancelling whatever we had resting. One request
+ * that side (`quoteInsideTicks` inside the touch), cancelling whatever we had resting. A decision
+ * whose confidence is under `skipBelowConfidence` places nothing (the block shows SKIP). One request
  * in flight; a block that arrives while the previous one is still running is emitted as late.
  *
  * Live sends are fire-and-forget: the block event carries the quote as `sent`; its receipt
@@ -65,7 +68,7 @@ export class Trader {
   private inflight = new Map<string, Quote>();
   private simId = 0;
   private position = { mon: 0, costUsd: 0 }; // signed inventory and its cost basis
-  private totals: Totals = { blocks: 0, decisions: 0, quotes: 0, fills: 0, reverted: 0, lateBlocks: 0, jevUsd: 0, gasMon: 0, gasUsd: 0, realizedUsd: 0, pnlUsd: 0, pnlMon: 0, pnlPct: 0 };
+  private totals: Totals = { blocks: 0, decisions: 0, quotes: 0, skipped: 0, fills: 0, reverted: 0, lateBlocks: 0, jevUsd: 0, gasMon: 0, gasUsd: 0, realizedUsd: 0, pnlUsd: 0, pnlMon: 0, pnlPct: 0 };
 
   constructor(
     private market: Market,
@@ -102,11 +105,14 @@ export class Trader {
       this.trades?.poll(block).then(() => this.harvest()); // off the hot path: eth_getLogs for prints (and our fills) since the last poll
 
       const decision = await this.model.decide(this.buildState(block, book));
+      // Below the confidence bar no order is placed; whatever was resting stays until the next confident block cancels it.
+      const skipped = decision.confidence < config.skipBelowConfidence;
       const wanted: Side = decision.action === "sell" ? "sell" : "buy";
       const other: Side = wanted === "buy" ? "sell" : "buy";
       // The position cap (and, live, margin funds) can only pick the reducing side. The probabilities still show the model's call.
-      const side: Side | null = this.allowed(wanted, book) ? wanted : this.allowed(other, book) ? other : null;
+      const side: Side | null = skipped ? null : this.allowed(wanted, book) ? wanted : this.allowed(other, book) ? other : null;
       this.totals.decisions++;
+      if (skipped) this.totals.skipped++;
       this.totals.jevUsd += (decision.inputTokens / 1e6) * config.jevUsdPerMTok;
 
       let quote: Quote | null = null;
@@ -275,8 +281,8 @@ export class Trader {
     const event: BlockEvent = {
       block, ts: Date.now(), mid: book.mid, bestBid: book.bid, bestAsk: book.ask, spreadBps: round(book.spreadBps, 2),
       decision: late
-        ? { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, confidence: 0, upIn10: 0.5, latencyMs: 0, late: true }
-        : decision && { action: decision.action, probabilities: decision.probabilities, confidence: round(decision.confidence, 4), upIn10: decision.upIn10, latencyMs: Math.round(decision.latencyMs), late: false },
+        ? { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, confidence: 0, skipped: false, upIn10: 0.5, latencyMs: 0, late: true }
+        : decision && { action: decision.action, probabilities: decision.probabilities, confidence: round(decision.confidence, 4), skipped: decision.confidence < config.skipBelowConfidence, upIn10: decision.upIn10, latencyMs: Math.round(decision.latencyMs), late: false },
       quote,
       fill: null,
       resting: { bidMon: round(this.restingMon("buy"), 1), askMon: round(this.restingMon("sell"), 1) },

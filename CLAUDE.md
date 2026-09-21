@@ -122,4 +122,6 @@ The demo exists to support this tweet. Every design or strategy change must keep
 >
 > Demo link: https://jev-trader.vercel.app
 
-Non-negotiables: Jev makes the buy/sell call (not code), from the price feed; real trades from a real wallet; an order placed on Kuru's on-chain book every 300 ms block; the demo is the live dashboard. Never decide every N blocks. No middle dots, em dashes or en dashes in any rendered text. No blinking or pulsing indicators.
+Non-negotiables: Jev makes the buy/sell call (not code), from the price feed; real trades from a real wallet; Jev is asked every 300 ms block, and every block whose confidence clears `SKIP_BELOW_CONFIDENCE` (default 0.7) places an order on Kuru's on-chain book, shown as SKIP otherwise; the demo is the live dashboard. Never decide every N blocks. No middle dots, em dashes or en dashes in any rendered text. No blinking or pulsing indicators.
+
+Note (2026-09-21): low-confidence skipping was added at the user's direction. The tweet's "in every 300ms block" claim only holds verbatim with `SKIP_BELOW_CONFIDENCE=0`; with the default 0.7, the tweet copy needs a confidence qualifier.
