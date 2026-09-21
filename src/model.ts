@@ -29,6 +29,8 @@ export interface TradeState {
 export interface Decision {
   action: Action;
   probabilities: Record<Action, number>;
+  /** 0..1, from how the probability mass is spread: 0 at an even split, 1 at a single peak. */
+  confidence: number;
   upIn10: number;
   latencyMs: number;
   inputTokens: number;
@@ -69,6 +71,8 @@ export class JevModel implements Model {
     return {
       action: a.choice as Action,
       probabilities: { buy, sell, hold: 0 },
+      // The answer carries confidence (docs.typesafe.ai/primitives/choice); the SDK types lag it.
+      confidence: (a as { confidence?: number }).confidence ?? Math.abs(buy - sell),
       upIn10: buy,
       latencyMs: performance.now() - t0,
       inputTokens: r.usage?.inputTokens ?? 0,
@@ -91,6 +95,7 @@ export class MockModel implements Model {
     await Bun.sleep(80); // stand in for inference time so the pipeline behaves like production
     return {
       action, probabilities,
+      confidence: Math.abs(buy - (1 - buy)), // mirror of TypeSafe's spread metric for two options
       upIn10: buy,
       latencyMs: performance.now() - t0,
       inputTokens: Math.round(JSON.stringify(state).length / 4),

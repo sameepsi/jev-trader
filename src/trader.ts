@@ -11,7 +11,7 @@ export interface BlockEvent {
   bestBid: number;
   bestAsk: number;
   spreadBps: number;
-  decision: { action: Action; probabilities: Record<Action, number>; upIn10: number; latencyMs: number; late: boolean } | null;
+  decision: { action: Action; probabilities: Record<Action, number>; confidence: number; upIn10: number; latencyMs: number; late: boolean } | null;
   /** The order this block put on the book. */
   quote: Quote | null;
   /** Maker fills that landed in this block (aggregated), attached when the trade logs for it arrive. */
@@ -275,8 +275,8 @@ export class Trader {
     const event: BlockEvent = {
       block, ts: Date.now(), mid: book.mid, bestBid: book.bid, bestAsk: book.ask, spreadBps: round(book.spreadBps, 2),
       decision: late
-        ? { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, upIn10: 0.5, latencyMs: 0, late: true }
-        : decision && { action: decision.action, probabilities: decision.probabilities, upIn10: decision.upIn10, latencyMs: Math.round(decision.latencyMs), late: false },
+        ? { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, confidence: 0, upIn10: 0.5, latencyMs: 0, late: true }
+        : decision && { action: decision.action, probabilities: decision.probabilities, confidence: round(decision.confidence, 4), upIn10: decision.upIn10, latencyMs: Math.round(decision.latencyMs), late: false },
       quote,
       fill: null,
       resting: { bidMon: round(this.restingMon("buy"), 1), askMon: round(this.restingMon("sell"), 1) },

@@ -105,6 +105,13 @@ export default function DecisionPanel({ latest }: DecisionPanelProps) {
           fill={chosen === "sell" ? "var(--sell-bar)" : "var(--sell-bar-dim)"}
           pct={pctOf(probs.sell)}
         />
+
+        {decided && decision.confidence != null ? (
+          <div className={styles.confidence}>
+            <span>confidence</span>
+            <span className={styles.confidencePct}>{fmtPct(decision.confidence)}</span>
+          </div>
+        ) : null}
       </section>
     </div>
   );

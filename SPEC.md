@@ -77,7 +77,7 @@ Nothing on screen may compete with these two lines.
 ## Live data shape (delivered over a server stream, one event per block)
 - block, timestamp
 - mid, bestBid, bestAsk, spread
-- decision: action (buy | sell; hold only when late), probabilities {buy, sell, hold}, upIn10 (= buy probability), latencyMs, late (bool)
+- decision: action (buy | sell; hold only when late), probabilities {buy, sell, hold}, confidence (0..1, how peaked the probabilities are), upIn10 (= buy probability), latencyMs, late (bool)
 - fill (optional): side, size, price, txHash, gasMon
 - position: side, size, entryPrice, unrealizedMon
 - totals: blocks, decisions, trades, jevUsd, gasMon, gasUsd, pnlMon, pnlPct, lateBlocks
