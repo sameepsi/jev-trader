@@ -29,6 +29,8 @@ export interface TradeState {
 export interface Decision {
   action: Action;
   probabilities: Record<Action, number>;
+  /** 0..1, from how the probability mass is spread: 0 at an even split, 1 at a single peak. */
+  confidence: number;
   upIn10: number;
   latencyMs: number;
   inputTokens: number;
@@ -59,16 +61,24 @@ const QUESTIONS = {
 export class JevModel implements Model {
   readonly name = config.jevModelId;
   private model = typeSafeAi.evaluationModel(config.jevModelId);
+  private loggedAnswer = false;
 
   async decide(state: TradeState): Promise<Decision> {
     const t0 = performance.now();
     const r = await experimental_evaluate({ model: this.model, state: state as any, questions: QUESTIONS, maxRetries: 0 });
     const a = r.answers.direction;
+    // TEMP: one-time dump of the raw answer, to verify the API returns `confidence` (SDK types omit it).
+    if (!this.loggedAnswer) {
+      this.loggedAnswer = true;
+      console.log(`jev raw answer: ${JSON.stringify(a)}`);
+    }
     const p = a.probabilities ?? { buy: 0, sell: 0, [a.choice]: 1 };
     const buy = p.buy ?? 0, sell = p.sell ?? 0;
     return {
       action: a.choice as Action,
       probabilities: { buy, sell, hold: 0 },
+      // The answer carries confidence (docs.typesafe.ai/primitives/choice); the SDK types lag it.
+      confidence: (a as { confidence?: number }).confidence ?? Math.abs(buy - sell),
       upIn10: buy,
       latencyMs: performance.now() - t0,
       inputTokens: r.usage?.inputTokens ?? 0,
@@ -91,6 +101,7 @@ export class MockModel implements Model {
     await Bun.sleep(80); // stand in for inference time so the pipeline behaves like production
     return {
       action, probabilities,
+      confidence: Math.abs(buy - (1 - buy)), // mirror of TypeSafe's spread metric for two options
       upIn10: buy,
       latencyMs: performance.now() - t0,
       inputTokens: Math.round(JSON.stringify(state).length / 4),

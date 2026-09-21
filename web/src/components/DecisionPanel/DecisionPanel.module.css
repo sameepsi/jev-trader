@@ -104,6 +104,25 @@
   font-variant-numeric: tabular-nums;
 }
 
+.confidence {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--muted-2);
+}
+
+.confidencePct {
+  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .headline,
   .label,

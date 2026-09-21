@@ -61,6 +61,7 @@ Nothing on screen may compete with these two lines.
 
 ## States
 - Live: everything above.
+- Low confidence: decision panel shows SKIP in neutral grey with the probabilities still visible; no order that block, skipped counter increments.
 - Model late: block ticks amber, decision panel shows "late — held", counter for late blocks increments.
 - RPC disconnected: header dot turns red, chart freezes with a "reconnecting" overlay, counters stop.
 - Out of funds / paused: banner across the hero, decisions continue in dry-run (shown greyed) but no fills.
@@ -77,7 +78,7 @@ Nothing on screen may compete with these two lines.
 ## Live data shape (delivered over a server stream, one event per block)
 - block, timestamp
 - mid, bestBid, bestAsk, spread
-- decision: action (buy | sell; hold only when late), probabilities {buy, sell, hold}, upIn10 (= buy probability), latencyMs, late (bool)
+- decision: action (buy | sell; hold only when late), probabilities {buy, sell, hold}, confidence (0..1, how peaked the probabilities are), skipped (bool: confidence under the bar, no order placed), upIn10 (= buy probability), latencyMs, late (bool)
 - fill (optional): side, size, price, txHash, gasMon
 - position: side, size, entryPrice, unrealizedMon
 - totals: blocks, decisions, trades, jevUsd, gasMon, gasUsd, pnlMon, pnlPct, lateBlocks

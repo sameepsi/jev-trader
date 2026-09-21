@@ -28,6 +28,8 @@ export const config = {
   pendingBlocks: 10, // give up on a tx with no receipt after this many blocks
   refreshBlocks: 200, // how often to refresh the fee estimate, margin balances and the vault check
   horizonBlocks: Number(env("HORIZON_BLOCKS", "100")), // the model is asked about the move over this many blocks (~30 s)
+  /** Skip the block (no order, SKIP on the dashboard) when the decision's confidence is below this. 0 disables skipping. */
+  skipBelowConfidence: Number(env("SKIP_BELOW_CONFIDENCE", "0.7")),
   model: env("MODEL", "mock") as "mock" | "jev",
   jevModelId: env("JEV_MODEL_ID", "jev-latest")!,
   jevUsdPerMTok: 0.042,

@@ -50,22 +50,27 @@ function BarRow({ label, labelColor, active, value, fill, pct }: BarRowProps) {
 export default function DecisionPanel({ latest }: DecisionPanelProps) {
   const decision = latest?.decision ?? null;
   const late = decision ? decision.late : true;
+  // Low confidence: the model answered but the bot placed nothing this block.
+  const skipped = !!(decision && !decision.late && decision.skipped);
   // "hold" is treated as a non-decision, exactly as the feed does.
   const chosen: Chosen =
-    decision && !decision.late && decision.action !== "hold"
+    decision && !decision.late && !skipped && decision.action !== "hold"
       ? decision.action
       : null;
 
   const probs = decision?.probabilities ?? { buy: 0, sell: 0, hold: 0 };
-  const decided = decision !== null && !late && chosen !== null;
-  const pctOf = (p: number) => (decided ? fmtPct(p) : "-");
+  // A skipped block still has the model's numbers; only LATE has none.
+  const answered = decision !== null && !late;
+  const pctOf = (p: number) => (answered ? fmtPct(p) : "-");
 
-  const headline = chosen ? (chosen === "buy" ? "BUY" : "SELL") : "LATE";
+  const headline = chosen ? (chosen === "buy" ? "BUY" : "SELL") : skipped ? "SKIP" : "LATE";
   const headlineColor = chosen
     ? chosen === "buy"
       ? "var(--buy-ink)"
       : "var(--sell-ink)"
-    : "var(--late-ink)";
+    : skipped
+      ? "var(--ink-2)"
+      : "var(--late-ink)";
   const headlinePct = chosen ? fmtPct(probs[chosen]) : "";
 
   return (
@@ -73,7 +78,7 @@ export default function DecisionPanel({ latest }: DecisionPanelProps) {
       <section className={styles.section}>
         <div className={styles.sectionLabel}>STANDING ORDER</div>
         <div className={styles.order}>
-          {"> post a bid or an ask on Kuru's MON/USDC book. every block. no abstaining."}
+          {"> post a bid or an ask on Kuru's MON/USDC book. skip the block when confidence is under the bar."}
         </div>
       </section>
 
@@ -105,6 +110,13 @@ export default function DecisionPanel({ latest }: DecisionPanelProps) {
           fill={chosen === "sell" ? "var(--sell-bar)" : "var(--sell-bar-dim)"}
           pct={pctOf(probs.sell)}
         />
+
+        {answered && decision.confidence != null ? (
+          <div className={styles.confidence}>
+            <span>{skipped ? "confidence under the bar. no order this block" : "confidence"}</span>
+            <span className={styles.confidencePct}>{fmtPct(decision.confidence)}</span>
+          </div>
+        ) : null}
       </section>
     </div>
   );
