@@ -61,11 +61,17 @@ const QUESTIONS = {
 export class JevModel implements Model {
   readonly name = config.jevModelId;
   private model = typeSafeAi.evaluationModel(config.jevModelId);
+  private loggedAnswer = false;
 
   async decide(state: TradeState): Promise<Decision> {
     const t0 = performance.now();
     const r = await experimental_evaluate({ model: this.model, state: state as any, questions: QUESTIONS, maxRetries: 0 });
     const a = r.answers.direction;
+    // TEMP: one-time dump of the raw answer, to verify the API returns `confidence` (SDK types omit it).
+    if (!this.loggedAnswer) {
+      this.loggedAnswer = true;
+      console.log(`jev raw answer: ${JSON.stringify(a)}`);
+    }
     const p = a.probabilities ?? { buy: 0, sell: 0, [a.choice]: 1 };
     const buy = p.buy ?? 0, sell = p.sell ?? 0;
     return {
