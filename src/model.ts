@@ -67,18 +67,20 @@ export class JevModel implements Model {
     const t0 = performance.now();
     const r = await experimental_evaluate({ model: this.model, state: state as any, questions: QUESTIONS, maxRetries: 0 });
     const a = r.answers.direction;
-    // TEMP: one-time dump of the raw answer, to verify the API returns `confidence` (SDK types omit it).
+    // TEMP: one-time dump to verify the API's confidence lands in providerMetadata.typesafe.
     if (!this.loggedAnswer) {
       this.loggedAnswer = true;
-      console.log(`jev raw answer: ${JSON.stringify(a)}`);
+      console.log(`jev providerMetadata: ${JSON.stringify(r.providerMetadata)}`);
     }
     const p = a.probabilities ?? { buy: 0, sell: 0, [a.choice]: 1 };
     const buy = p.buy ?? 0, sell = p.sell ?? 0;
+    // The provider strips confidence off the answer and parks it, keyed by question id, in
+    // providerMetadata.typesafe.confidence. Spread fallback if the API omitted it (nullish in the schema).
+    const meta = r.providerMetadata as unknown as { typesafe?: { confidence?: Record<string, number> } } | undefined;
     return {
       action: a.choice as Action,
       probabilities: { buy, sell, hold: 0 },
-      // The answer carries confidence (docs.typesafe.ai/primitives/choice); the SDK types lag it.
-      confidence: (a as { confidence?: number }).confidence ?? Math.abs(buy - sell),
+      confidence: meta?.typesafe?.confidence?.direction ?? Math.abs(buy - sell),
       upIn10: buy,
       latencyMs: performance.now() - t0,
       inputTokens: r.usage?.inputTokens ?? 0,
